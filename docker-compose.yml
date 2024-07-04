@@ -1,0 +1,37 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: audio-bot
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - bot-network
+
+  node:
+    build: .
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      DATABASE_URL: postgres://postgres:secret@postgres:5432/audio-bot
+      BOT_API_KEY: 7122961716:AAFEYxtGdh7dM1XtOE4M1xIWvO_mYfifUOQ
+    depends_on:
+      - postgres
+    ports:
+      - "3000:3000"
+    networks:
+      - bot-network
+
+volumes:
+  pgdata:
+
+networks:
+  bot-network:
