@@ -114,9 +114,9 @@ bot.on("message:audio", async (ctx) => {
   }
 });
 
-bot.on("message:file", async (ctx) => {
-  const audio = ctx.message.file;
-  const fileId = audio.file_id;
+bot.on("message:document", async (ctx) => {
+  const document = ctx.message.document;
+  const fileId = document.file_id;
   const file = await ctx.api.getFile(fileId);
   const fileLink = `https://api.telegram.org/file/bot${process.env.BOT_API_KEY}/${file.file_path}`;
   
@@ -137,7 +137,7 @@ bot.on("message:file", async (ctx) => {
         resolve(dest);
       });
     }).on('error', err => {
-      console.error('Error downloading file:', err);
+      console.error('Ошибка при загрузке файла:', err);
       fs.unlink(dest);
       reject(err);
     });
@@ -145,7 +145,7 @@ bot.on("message:file", async (ctx) => {
 
   // Функция для обрезки аудио
   const trimAudio = (inputPath, outputPath, startTime, duration) => {
-    console.log('Trimming audio:', inputPath, outputPath, startTime, duration);
+    console.log('Обрезка аудио:', inputPath, outputPath, startTime, duration);
     return new Promise((resolve, reject) => {
       ffmpeg(inputPath)
         .setStartTime(startTime)
@@ -173,7 +173,7 @@ bot.on("message:file", async (ctx) => {
 
       await insertSegmentInfo(fileId, segmentFileId, startTime, duration);
 
-      if (startTime + duration >= audio.duration) break;
+      if (startTime + duration >= document.duration) break;
       
       startTime += duration;
     }
@@ -199,6 +199,7 @@ bot.on("message:file", async (ctx) => {
     outputFiles.forEach(file => fs.unlinkSync(file));
   }
 });
+
 
 async function insertSegmentInfo(originalFileId, segmentFileId, startTime, duration) {
   const query = 'INSERT INTO audio_segments (original_file_id, segment_file_id, segment_start_time, segment_duration) VALUES ($1, $2, $3, $4)';
