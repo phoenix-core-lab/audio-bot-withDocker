@@ -57,6 +57,30 @@ bot.on("message:audio", async (ctx) => {
     });
   });
 
+  // Функция для детектирования пауз
+  const detectSilence = (inputPath) => {
+    return new Promise((resolve, reject) => {
+      let silenceTimestamps = [];
+      ffmpeg(inputPath)
+        .outputOptions('-af', 'silencedetect=noise=-30dB:d=0.5')
+        .outputOptions('-f', 'null')
+        .on('end', () => {
+          resolve(silenceTimestamps);
+        })
+        .on('error', (err) => {
+          console.log('Error detecting silence: ', err);
+          reject(err);
+        })
+        .on('stderr', (stderrLine) => {
+          const silenceMatch = stderrLine.match(/silence_start: (\d+\.\d+)/);
+          if (silenceMatch) {
+            silenceTimestamps.push(parseFloat(silenceMatch[1]));
+          }
+        })
+        .saveToFile('/dev/null');
+    });
+  };
+
   // Функция для обрезки аудио
   const trimAudio = (inputPath, outputPath, startTime, duration) => {
     console.log('Trimming audio:', inputPath, outputPath, startTime, duration);
@@ -71,25 +95,34 @@ bot.on("message:audio", async (ctx) => {
   };
 
   const duration = 6; // 6 секунд
-  let startTime = 0;
   const outputFiles = [];
 
   try {
     // Загрузка файла аудио
     const downloadedFilePath = await downloadFile(fileLink, inputFilePath);
 
-    while (true) {
-      console.log('Обработка сегмента:', startTime, duration);
+    // Детектирование пауз
+    const silenceTimestamps = await detectSilence(downloadedFilePath);
+
+    let startTime = 0;
+
+    while (startTime < audio.duration) {
+      let endTime = startTime + duration;
+
+      // Поиск ближайшей паузы в пределах сегмента
+      const nextSilence = silenceTimestamps.find(ts => ts > startTime && ts <= endTime);
+      if (nextSilence) {
+        endTime = nextSilence;
+      }
+
       const segmentFileId = uuidv4();
       const outputFilePath = path.join(outputDir, `${segmentFileId}.wav`);
-      await trimAudio(downloadedFilePath, outputFilePath, startTime, duration);
+      await trimAudio(downloadedFilePath, outputFilePath, startTime, endTime - startTime);
       outputFiles.push(outputFilePath);
 
-      await insertSegmentInfo(fileId, segmentFileId, startTime, duration);
+      await insertSegmentInfo(fileId, segmentFileId, startTime, endTime - startTime);
 
-      if (startTime + duration >= audio.duration) break;
-      
-      startTime += duration;
+      startTime = endTime;
     }
 
     for (const outputFile of outputFiles) {
@@ -116,7 +149,7 @@ bot.on("message:audio", async (ctx) => {
 
 async function insertSegmentInfo(originalFileId, segmentFileId, startTime, duration) {
   const query = 'INSERT INTO audio_segments (original_file_id, segment_file_id, segment_start_time, segment_duration) VALUES ($1, $2, $3, $4)';
-  const values = [originalFileId, segmentFileId, startTime, duration];
+  const values = [originalFileId, segmentFileId, Math.round(startTime), Math.round(duration)];
   await client.query(query, values);
 }
 
