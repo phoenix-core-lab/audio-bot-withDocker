@@ -94,7 +94,7 @@ bot.on("message:audio", async (ctx) => {
     });
   };
 
-  const duration = 6; // 6 секунд
+  const duration = 10; // 10 секунд
   const outputFiles = [];
 
   try {
