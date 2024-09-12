@@ -129,7 +129,7 @@ bot.on("message:audio", async (ctx) => {
       console.log(`Отправка аудиофайла: ${outputFile}`);
       if (fs.existsSync(outputFile)) {
         try {
-          const response = await ctx.replyWithAudio(new InputFile(outputFile));
+          const response = await ctx.replyWithAudio(new InputFile(outputFile), { caption : `\`${outputFile}\`` ,parse_mode: 'Markdown' });
           console.log('Аудио успешно отправлено:', response);
         } catch (error) {
           console.error('Ошибка при отправке аудио:', error);
