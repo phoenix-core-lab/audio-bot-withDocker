@@ -25,7 +25,7 @@ client.connect()
   .catch(err => console.error('Connection error', err.stack));
 
 bot.command('start', async (ctx) => {
-  await ctx.reply('Привет! Я - Бот, который поможет вам обрезать аудио файлы (WAV) по 6 секунд.');
+  await ctx.reply('Привет! Я - Бот, который поможет вам обрезать аудио файлы (WAV) по 10 секунд.');
 });
 
 bot.on("message:audio", async (ctx) => {
